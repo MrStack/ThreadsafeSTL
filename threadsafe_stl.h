@@ -22,9 +22,15 @@ public:
 	empty_stack(const char* const_pStr) :exception{ const_pStr } {}
 };
 
+
 namespace tsl
 {
-	
+
+	/* Warning: 
+	 *			1.The push() function dose not support a temporary copy of an argument that being
+	 *			transfered in. So the copy constructor of the value type should be implemented.
+	 *
+	 */	
 	template<typename T>
 	class CTSStack
 	{
@@ -41,6 +47,11 @@ namespace tsl
 		CTSStack& operator=(const CTSStack&) = delete;
 
 		void push(T& Value)
+		{
+			std::lock_guard<std::mutex> guard{ m_Mutex };
+			m_Container.push(Value);
+		}
+		void push(T&& Value)
 		{
 			std::lock_guard<std::mutex> guard{ m_Mutex };
 			m_Container.push(Value);
@@ -71,6 +82,20 @@ namespace tsl
 			std::lock_guard<std::mutex> guard{ m_Mutex };
 			return m_Container.empty();
 		}
+		
+		template<typename T>
+		friend void swap(CTSStack<T>& lrOne, CTSStack<T>& lrOther);
 	};
-
+	template<typename T>
+	void swap(CTSStack<T>& lrOne, CTSStack<T>& lrOther)
+	{
+		if (&lrOne == &lrOther)
+		{
+			return;
+		}
+		std::lock(lrOne.m_Mutex, lrOther.m_Mutex);
+		std::lock_guard<std::mutex> guard_a{ lrOne.m_Mutex,std::adopt_lock };
+		std::lock_guard<std::mutex> guard_b{ lrOther.m_Mutex,std::adopt_lock };
+		std::swap(lrOne.m_Container, lrOther.m_Container);
+	}
 }
